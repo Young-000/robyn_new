@@ -37,6 +37,25 @@ npm install
 npm run dev
 ```
 
+### API 키 설정 (선택사항)
+실제 날씨 및 교통 정보를 받으려면 API 키가 필요합니다.
+
+1. **날씨 API**: https://openweathermap.org/api
+   - 무료 회원가입 후 API 키 발급
+   
+2. **교통 API**: https://www.data.go.kr/
+   - 회원가입 후 "서울시 버스/지하철 도착정보" 활용신청
+
+3. `frontend/.env` 파일 생성:
+```env
+VITE_WEATHER_API_KEY=your_api_key_here
+VITE_TRANSIT_API_KEY=your_api_key_here
+```
+
+4. 개발 서버 재시작
+
+**상세 가이드**: [API_SETUP_DETAILED_GUIDE.md](./API_SETUP_DETAILED_GUIDE.md)
+
 ### Backend
 ```bash
 cd backend
