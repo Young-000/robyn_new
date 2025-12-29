@@ -8,15 +8,15 @@ export class InformationServiceFactory {
     const weatherApiKey = import.meta.env.VITE_WEATHER_API_KEY;
     const transitApiKey = import.meta.env.VITE_TRANSIT_API_KEY;
 
-    // API 키가 있으면 실제 서비스 사용, 없으면 Mock 사용
-    if (weatherApiKey || transitApiKey) {
-      return new CompositeInformationService(
-        weatherApiKey ? new WeatherApiService(weatherApiKey) : new MockInformationService(),
-        transitApiKey ? new TransitApiService(transitApiKey) : new MockInformationService()
-      );
-    }
+    // 날씨 API는 실제 서비스 사용, 교통 API는 Mock 사용 (일단)
+    const weatherService = weatherApiKey 
+      ? new WeatherApiService(weatherApiKey) 
+      : new MockInformationService();
+    
+    // 교통 API는 일단 Mock 사용 (API 링크 문제로 인해)
+    const transitService = new MockInformationService();
 
-    return new MockInformationService();
+    return new CompositeInformationService(weatherService, transitService);
   }
 }
 
