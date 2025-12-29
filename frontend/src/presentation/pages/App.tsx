@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Routine } from '@/domain/entities/Routine';
 import { RoutineForm } from '../components/RoutineForm';
 import { RoutineList } from '../components/RoutineList';
+import { TestNotificationButton } from '../components/TestNotificationButton';
 import { useRoutineScheduler } from '../hooks/useRoutineScheduler';
 import { useNotification } from '../hooks/useNotification';
 
@@ -9,6 +10,7 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const {
     routines,
+    isLoading,
     addRoutine,
     removeRoutine,
     updateRoutine,
@@ -19,23 +21,23 @@ function App() {
 
   const { sendNotification } = useNotification();
 
-  const handleAddRoutine = (routine: Routine) => {
-    addRoutine(routine);
+  const handleAddRoutine = async (routine: Routine) => {
+    await addRoutine(routine);
     setShowForm(false);
   };
 
-  const handleToggleRoutine = (routine: Routine) => {
+  const handleToggleRoutine = async (routine: Routine) => {
     if (routine.enabled) {
       routine.disable();
     } else {
       routine.enable();
     }
-    updateRoutine(routine);
+    await updateRoutine(routine);
   };
 
-  const handleDeleteRoutine = (routineId: string) => {
+  const handleDeleteRoutine = async (routineId: string) => {
     if (confirm('정말 삭제하시겠습니까?')) {
-      removeRoutine(routineId);
+      await removeRoutine(routineId);
     }
   };
 
@@ -87,14 +89,7 @@ function App() {
                 권한 요청
               </button>
             )}
-            {permission === 'granted' && (
-              <button
-                onClick={handleTestNotification}
-                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-              >
-                테스트 알림
-              </button>
-            )}
+            {permission === 'granted' && <TestNotificationButton />}
           </div>
         </div>
 
@@ -113,7 +108,11 @@ function App() {
               </button>
             )}
           </div>
-          {showForm ? (
+          {isLoading ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              로딩 중...
+            </div>
+          ) : showForm ? (
             <RoutineForm
               onSubmit={handleAddRoutine}
               onCancel={() => setShowForm(false)}

@@ -45,19 +45,12 @@ export class BrowserNotificationService implements INotificationService {
       throw new Error('Notification permission denied');
     }
 
-    const notificationOptions: NotificationOptions = {
+    new Notification(options.title, {
+      body: options.body,
       icon: options.icon,
       badge: options.badge,
       tag: options.tag,
       requireInteraction: options.requireInteraction ?? false,
-    };
-
-    new Notification(options.title, {
-      body: options.body,
-      icon: notificationOptions.icon,
-      badge: notificationOptions.badge,
-      tag: notificationOptions.tag,
-      requireInteraction: notificationOptions.requireInteraction,
     });
   }
 }

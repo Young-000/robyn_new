@@ -1,6 +1,5 @@
 import { Routine } from '@/domain/entities/Routine';
 import type { INotificationService } from '@/domain/interfaces/INotificationService';
-import type { InformationSourceType } from '@/shared/types';
 
 export interface IInformationService {
   getWeatherInfo(config: any): Promise<any>;

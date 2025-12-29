@@ -2,12 +2,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Routine } from '@/domain/entities/Routine';
 import { SendRoutineNotificationUseCase } from '@/application/use-cases/SendRoutineNotificationUseCase';
 import { BrowserNotificationService } from '@/infrastructure/notification/BrowserNotificationService';
+import { LocalStorageRoutineRepository } from '@/infrastructure/storage/LocalStorageRoutineRepository';
 import { useNotification } from './useNotification';
 import { MockInformationService } from '@/infrastructure/api/MockInformationService';
 
 export function useRoutineScheduler() {
   const [routines, setRoutines] = useState<Routine[]>([]);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const repositoryRef = useRef(new LocalStorageRoutineRepository());
   const { isSupported, permission, requestPermission } = useNotification();
 
   // Notification Service와 Use Case 초기화
@@ -18,18 +21,42 @@ export function useRoutineScheduler() {
     informationService
   );
 
+  // 초기 로드
+  useEffect(() => {
+    const loadRoutines = async () => {
+      try {
+        const loaded = await repositoryRef.current.findAll();
+        setRoutines(loaded);
+      } catch (error) {
+        console.error('Failed to load routines:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadRoutines();
+  }, []);
+
   // 루틴 추가
-  const addRoutine = useCallback((routine: Routine) => {
-    setRoutines((prev) => [...prev, routine]);
+  const addRoutine = useCallback(async (routine: Routine) => {
+    await repositoryRef.current.save(routine);
+    setRoutines((prev) => {
+      const exists = prev.find((r) => r.id === routine.id);
+      if (exists) {
+        return prev.map((r) => (r.id === routine.id ? routine : r));
+      }
+      return [...prev, routine];
+    });
   }, []);
 
   // 루틴 제거
-  const removeRoutine = useCallback((routineId: string) => {
+  const removeRoutine = useCallback(async (routineId: string) => {
+    await repositoryRef.current.delete(routineId);
     setRoutines((prev) => prev.filter((r) => r.id !== routineId));
   }, []);
 
   // 루틴 업데이트
-  const updateRoutine = useCallback((routine: Routine) => {
+  const updateRoutine = useCallback(async (routine: Routine) => {
+    await repositoryRef.current.save(routine);
     setRoutines((prev) =>
       prev.map((r) => (r.id === routine.id ? routine : r))
     );
@@ -38,6 +65,10 @@ export function useRoutineScheduler() {
   // 스케줄 체크 및 알림 전송
   useEffect(() => {
     if (!isSupported || permission !== 'granted') {
+      return;
+    }
+
+    if (routines.length === 0) {
       return;
     }
 
@@ -84,10 +115,12 @@ export function useRoutineScheduler() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [routines, isSupported, permission, sendNotificationUseCase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routines.length, isSupported, permission]);
 
   return {
     routines,
+    isLoading,
     addRoutine,
     removeRoutine,
     updateRoutine,

@@ -13,12 +13,12 @@ describe('BrowserNotificationService', () => {
     };
 
     // Notification API 모킹
-    global.Notification = vi.fn().mockImplementation((title, options) => {
+    (globalThis as any).Notification = vi.fn().mockImplementation((title: string, options: any) => {
       return mockNotification;
     }) as any;
 
-    global.Notification.permission = 'granted';
-    global.Notification.requestPermission = vi.fn().mockResolvedValue('granted');
+    (globalThis as any).Notification.permission = 'granted';
+    (globalThis as any).Notification.requestPermission = vi.fn().mockResolvedValue('granted');
   });
 
   afterEach(() => {
@@ -31,10 +31,10 @@ describe('BrowserNotificationService', () => {
 
   it('should request notification permission', async () => {
     // permission이 'default'인 경우에만 requestPermission 호출
-    global.Notification.permission = 'default';
+    (globalThis as any).Notification.permission = 'default';
     const permission = await service.requestPermission();
     expect(permission).toBe('granted');
-    expect(global.Notification.requestPermission).toHaveBeenCalled();
+    expect((globalThis as any).Notification.requestPermission).toHaveBeenCalled();
   });
 
   it('should send notification when permission is granted', async () => {
@@ -43,7 +43,7 @@ describe('BrowserNotificationService', () => {
       body: '이것은 테스트입니다',
     });
 
-    expect(global.Notification).toHaveBeenCalledWith('테스트 알림', {
+    expect(globalThis.Notification).toHaveBeenCalledWith('테스트 알림', {
       body: '이것은 테스트입니다',
       icon: undefined,
       badge: undefined,
@@ -53,7 +53,7 @@ describe('BrowserNotificationService', () => {
   });
 
   it('should not send notification when permission is denied', async () => {
-    global.Notification.permission = 'denied';
+    (globalThis as any).Notification.permission = 'denied';
     
     await expect(
       service.sendNotification({
@@ -73,7 +73,7 @@ describe('BrowserNotificationService', () => {
       requireInteraction: true,
     });
 
-    expect(global.Notification).toHaveBeenCalledWith('테스트 알림', {
+    expect(globalThis.Notification).toHaveBeenCalledWith('테스트 알림', {
       body: '이것은 테스트입니다',
       icon: '/icon.png',
       badge: '/badge.png',
