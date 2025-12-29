@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알림 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            border-radius: 5px;
+        }
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 알림 테스트</h1>
+        
+        <div class="test-section">
+            <h2>1. 알림 권한 요청</h2>
+            <button onclick="requestPermission()">알림 권한 요청</button>
+            <div id="permission-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. 테스트 알림 발송</h2>
+            <button onclick="sendTestNotification()">기본 알림 발송</button>
+            <button onclick="sendWeatherNotification()">날씨 알림 발송</button>
+            <button onclick="sendCustomNotification()">커스텀 알림 발송</button>
+            <div id="notification-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. 루틴 시뮬레이션</h2>
+            <button onclick="simulateRoutine()">루틴 알림 시뮬레이션</button>
+            <div id="routine-result"></div>
+        </div>
+    </div>
+
+    <script>
+        let permissionStatus = 'default';
+
+        async function requestPermission() {
+            if (!('Notification' in window)) {
+                document.getElementById('permission-result').innerHTML = 
+                    '<div class="result error">이 브라우저는 알림을 지원하지 않습니다.</div>';
+                return;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                permissionStatus = permission;
+                document.getElementById('permission-result').innerHTML = 
+                    `<div class="result">✅ 권한 상태: ${permission}</div>`;
+            } catch (error) {
+                document.getElementById('permission-result').innerHTML = 
+                    `<div class="result error">❌ 오류: ${error.message}</div>`;
+            }
+        }
+
+        function sendTestNotification() {
+            if (permissionStatus !== 'granted') {
+                alert('먼저 알림 권한을 요청해주세요.');
+                return;
+            }
+
+            new Notification('테스트 알림', {
+                body: '이것은 테스트 알림입니다! 🎉',
+                icon: '/vite.svg',
+                tag: 'test-1',
+            });
+
+            document.getElementById('notification-result').innerHTML = 
+                '<div class="result">✅ 기본 알림 발송 완료</div>';
+        }
+
+        function sendWeatherNotification() {
+            if (permissionStatus !== 'granted') {
+                alert('먼저 알림 권한을 요청해주세요.');
+                return;
+            }
+
+            const weatherData = {
+                temperature: Math.floor(Math.random() * 20) + 10,
+                condition: ['맑음', '흐림', '비'][Math.floor(Math.random() * 3)],
+                humidity: Math.floor(Math.random() * 40) + 40,
+            };
+
+            new Notification('출근 루틴 알림', {
+                body: `🌤️ 날씨: ${weatherData.temperature}°C, ${weatherData.condition} (습도: ${weatherData.humidity}%)`,
+                icon: '/vite.svg',
+                tag: 'routine-weather',
+            });
+
+            document.getElementById('notification-result').innerHTML = 
+                `<div class="result">✅ 날씨 알림 발송 완료<br>내용: ${weatherData.temperature}°C, ${weatherData.condition}</div>`;
+        }
+
+        function sendCustomNotification() {
+            if (permissionStatus !== 'granted') {
+                alert('먼저 알림 권한을 요청해주세요.');
+                return;
+            }
+
+            const customTitle = prompt('알림 제목을 입력하세요:', '커스텀 알림');
+            const customBody = prompt('알림 내용을 입력하세요:', '임의의 내용입니다');
+
+            if (customTitle && customBody) {
+                new Notification(customTitle, {
+                    body: customBody,
+                    icon: '/vite.svg',
+                    tag: 'custom',
+                });
+
+                document.getElementById('notification-result').innerHTML = 
+                    `<div class="result">✅ 커스텀 알림 발송 완료<br>제목: ${customTitle}<br>내용: ${customBody}</div>`;
+            }
+        }
+
+        function simulateRoutine() {
+            if (permissionStatus !== 'granted') {
+                alert('먼저 알림 권한을 요청해주세요.');
+                return;
+            }
+
+            const routines = [
+                {
+                    title: '출근 루틴 알림',
+                    body: '🌤️ 날씨: 15°C, 맑음 (습도: 60%)\n💨 미세먼지: 좋음 (PM10: 30㎍/㎥)\n🚌 버스: 146번 5분 후 도착',
+                },
+                {
+                    title: '퇴근 루틴 알림',
+                    body: '🌤️ 날씨: 18°C, 흐림 (습도: 70%)\n🚇 지하철: 2호선 3분 후 도착',
+                },
+                {
+                    title: '점심 루틴 알림',
+                    body: '🌤️ 날씨: 20°C, 맑음 (습도: 55%)',
+                },
+            ];
+
+            const randomRoutine = routines[Math.floor(Math.random() * routines.length)];
+
+            new Notification(randomRoutine.title, {
+                body: randomRoutine.body,
+                icon: '/vite.svg',
+                tag: 'routine-sim',
+            });
+
+            document.getElementById('routine-result').innerHTML = 
+                `<div class="result">✅ 루틴 알림 시뮬레이션 완료<br><pre>${randomRoutine.body}</pre></div>`;
+        }
+
+        // 페이지 로드 시 권한 상태 확인
+        window.onload = function() {
+            if ('Notification' in window) {
+                permissionStatus = Notification.permission;
+                if (permissionStatus === 'granted') {
+                    document.getElementById('permission-result').innerHTML = 
+                        '<div class="result">✅ 이미 알림 권한이 허용되어 있습니다.</div>';
+                }
+            }
+        };
+    </script>
+</body>
+</html>
