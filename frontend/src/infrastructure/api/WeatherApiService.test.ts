@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WeatherApiService } from './WeatherApiService';
 
 // Mock fetch
-global.fetch = vi.fn();
+(globalThis as any).fetch = vi.fn();
 
 describe('WeatherApiService', () => {
   let service: WeatherApiService;
@@ -25,7 +25,7 @@ describe('WeatherApiService', () => {
       ],
     };
 
-    (global.fetch as any).mockResolvedValueOnce({
+    ((globalThis as any).fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => mockResponse,
     });
@@ -52,7 +52,7 @@ describe('WeatherApiService', () => {
   });
 
   it('should handle API errors gracefully', async () => {
-    (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
+    ((globalThis as any).fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
     service = new WeatherApiService('test-api-key');
     const result = await service.getWeatherInfo({
@@ -77,7 +77,7 @@ describe('WeatherApiService', () => {
       ],
     };
 
-    (global.fetch as any).mockResolvedValueOnce({
+    ((globalThis as any).fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => mockResponse,
     });

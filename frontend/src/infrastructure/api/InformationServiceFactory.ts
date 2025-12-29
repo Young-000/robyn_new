@@ -1,17 +1,27 @@
 import type { IInformationService } from '@/application/use-cases/SendRoutineNotificationUseCase';
 import { WeatherApiService } from './WeatherApiService';
+import { KoreaWeatherApiService } from './KoreaWeatherApiService';
 import { TransitApiService } from './TransitApiService';
 import { MockInformationService } from './MockInformationService';
 
 export class InformationServiceFactory {
   static create(): IInformationService {
     const weatherApiKey = import.meta.env.VITE_WEATHER_API_KEY;
+    const kmaApiKey = import.meta.env.VITE_KMA_API_KEY;
     const transitApiKey = import.meta.env.VITE_TRANSIT_API_KEY;
 
-    // 날씨 API는 실제 서비스 사용, 교통 API는 Mock 사용 (일단)
-    const weatherService = weatherApiKey 
-      ? new WeatherApiService(weatherApiKey) 
-      : new MockInformationService();
+    // 기상청 API 우선 사용, 없으면 OpenWeatherMap 사용
+    let weatherService: IInformationService;
+    if (kmaApiKey) {
+      console.log('Using Korea Meteorological Administration (KMA) API');
+      weatherService = new KoreaWeatherApiService(kmaApiKey);
+    } else if (weatherApiKey) {
+      console.log('Using OpenWeatherMap API');
+      weatherService = new WeatherApiService(weatherApiKey);
+    } else {
+      console.log('Using mock weather data');
+      weatherService = new MockInformationService();
+    }
     
     // 교통 API는 일단 Mock 사용 (API 링크 문제로 인해)
     const transitService = new MockInformationService();
