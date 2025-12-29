@@ -57,7 +57,239 @@
 - **CI/CD**: GitHub Actions
 - **Monitoring**: (선택) Sentry, LogRocket
 
-## 3. Clean Architecture 설계
+### 2.5 알림 시스템
+- **브라우저 알림**: Web Notifications API
+- **푸시 알림**: Push API + Service Worker
+- **백그라운드 동기화**: Background Sync API
+- **푸시 서비스**: Firebase Cloud Messaging (FCM) 또는 Web Push Protocol
+
+## 3. 알림 시스템 상세 설계
+
+### 3.1 알림 방식 비교
+
+#### 방식 1: 브라우저 알림 (Web Notifications API)
+**장점:**
+- ✅ 구현 간단
+- ✅ 브라우저가 열려있을 때 즉시 알림
+- ✅ 사용자 권한만 있으면 바로 사용 가능
+
+**단점:**
+- ❌ 브라우저가 닫히면 알림 불가
+- ❌ 백그라운드에서 동작하지 않음
+- ❌ 모바일에서 제한적 (특히 iOS Safari)
+
+**사용 시나리오:**
+- MVP 단계에서 빠른 구현
+- 사용자가 앱을 열어둔 상태에서 알림
+
+#### 방식 2: 푸시 알림 (Push API + Service Worker) ⭐ **추천**
+**장점:**
+- ✅ 브라우저가 닫혀도 알림 가능
+- ✅ 백그라운드에서 동작
+- ✅ 네이티브 앱 수준의 경험
+- ✅ 서버에서 푸시 가능 (예약 알림 등)
+
+**단점:**
+- ❌ 구현 복잡도 높음
+- ❌ iOS Safari 제한적 (iOS 16.4+ 지원)
+- ❌ HTTPS 필수
+
+**사용 시나리오:**
+- 실 서비스 단계
+- 백그라운드 알림 필요
+- 서버에서 예약된 시간에 알림 전송
+
+#### 방식 3: 하이브리드 방식 (권장)
+**전략:**
+1. **MVP 단계**: 브라우저 알림 (빠른 구현)
+2. **실 서비스 단계**: 푸시 알림으로 전환
+3. **폴백**: 푸시 알림 미지원 시 브라우저 알림 사용
+
+### 3.2 알림 구현 아키텍처
+
+```
+┌─────────────────────────────────────────┐
+│         사용자 디바이스                  │
+│  ┌──────────────────────────────────┐  │
+│  │   React App (Frontend)           │  │
+│  │   - 알림 권한 요청                │  │
+│  │   - 푸시 구독 관리                │  │
+│  └──────────────────────────────────┘  │
+│              ↕                          │
+│  ┌──────────────────────────────────┐  │
+│  │   Service Worker                 │  │
+│  │   - 푸시 이벤트 수신              │  │
+│  │   - 알림 표시                    │  │
+│  │   - 백그라운드 동기화             │  │
+│  └──────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+              ↕ HTTPS
+┌─────────────────────────────────────────┐
+│         백엔드 서버                      │
+│  ┌──────────────────────────────────┐  │
+│  │   Notification Service           │  │
+│  │   - 알림 스케줄링                 │  │
+│  │   - 푸시 전송                    │  │
+│  └──────────────────────────────────┘  │
+│              ↕                          │
+│  ┌──────────────────────────────────┐  │
+│  │   FCM / Web Push Service         │  │
+│  │   - 푸시 메시지 전달              │  │
+│  └──────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+### 3.3 알림 플로우
+
+#### 시나리오 1: 사용자가 앱을 열어둔 경우
+```
+1. 사용자가 앱 사용 중
+2. 루틴 시간 도래
+3. Frontend에서 정보 수집
+4. Web Notifications API로 즉시 알림 표시
+```
+
+#### 시나리오 2: 사용자가 앱을 닫은 경우 (푸시 알림)
+```
+1. 사용자가 앱 닫음
+2. 백엔드에서 루틴 스케줄 확인 (Cron Job)
+3. 루틴 시간 도래 시 정보 수집
+4. FCM/Web Push로 푸시 메시지 전송
+5. Service Worker가 푸시 이벤트 수신
+6. 알림 표시 (브라우저가 닫혀도 가능)
+```
+
+### 3.4 기술 구현 상세
+
+#### Frontend (알림 권한 및 구독)
+```typescript
+// 알림 권한 요청
+const requestNotificationPermission = async () => {
+  if ('Notification' in window) {
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  }
+  return false;
+};
+
+// 푸시 구독
+const subscribeToPush = async () => {
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: VAPID_PUBLIC_KEY
+  });
+  
+  // 백엔드에 구독 정보 전송
+  await fetch('/api/notifications/subscribe', {
+    method: 'POST',
+    body: JSON.stringify(subscription)
+  });
+};
+```
+
+#### Service Worker (푸시 수신 및 알림 표시)
+```javascript
+// service-worker.js
+self.addEventListener('push', (event) => {
+  const data = event.data.json();
+  
+  const options = {
+    title: data.title,
+    body: data.body,
+    icon: '/icon-192x192.png',
+    badge: '/badge-72x72.png',
+    data: data.data,
+    actions: [
+      { action: 'open', title: '열기' },
+      { action: 'close', title: '닫기' }
+    ],
+    requireInteraction: false,
+    silent: false
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// 알림 클릭 처리
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  if (event.action === 'open') {
+    event.waitUntil(
+      clients.openWindow('/')
+    );
+  }
+});
+```
+
+#### Backend (푸시 전송)
+```typescript
+// 푸시 알림 전송 서비스
+class NotificationService {
+  async sendPushNotification(subscription: PushSubscription, payload: NotificationPayload) {
+    // FCM 또는 Web Push Protocol 사용
+    const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `key=${FCM_SERVER_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        to: subscription.endpoint,
+        notification: {
+          title: payload.title,
+          body: payload.body,
+          icon: payload.icon
+        },
+        data: payload.data
+      })
+    });
+  }
+  
+  async scheduleRoutineNotification(routineId: string, scheduledTime: Date) {
+    // Cron Job 또는 스케줄러로 예약
+    // 시간 도래 시 정보 수집 후 푸시 전송
+  }
+}
+```
+
+### 3.5 플랫폼별 지원 현황
+
+| 플랫폼 | 브라우저 알림 | 푸시 알림 | 백그라운드 동기화 |
+|--------|--------------|----------|------------------|
+| Chrome (Desktop) | ✅ | ✅ | ✅ |
+| Chrome (Android) | ✅ | ✅ | ✅ |
+| Firefox (Desktop) | ✅ | ✅ | ✅ |
+| Firefox (Android) | ✅ | ✅ | ✅ |
+| Safari (Desktop) | ✅ | ✅ (macOS 13+) | ⚠️ 제한적 |
+| Safari (iOS) | ⚠️ 제한적 | ✅ (iOS 16.4+) | ❌ |
+| Edge | ✅ | ✅ | ✅ |
+
+### 3.6 알림 최적화 전략
+
+1. **배치 알림**: 여러 정보를 하나의 알림으로 통합
+2. **스마트 타이밍**: 사용자 활동 패턴 분석하여 최적 시간에 알림
+3. **알림 그룹핑**: 같은 시간대 알림을 그룹으로 묶기
+4. **사용자 설정**: 알림 빈도, 시간대, 타입별 on/off
+5. **오프라인 큐**: 네트워크 오프라인 시 알림 큐에 저장 후 재시도
+
+### 3.7 MVP vs 실 서비스 알림 전략
+
+**MVP 단계:**
+- 브라우저 알림만 사용 (구현 간단)
+- 사용자가 앱을 열어둔 상태에서만 알림
+- 빠른 프로토타입 검증
+
+**실 서비스 단계:**
+- 푸시 알림 구현
+- 백그라운드 동기화
+- 서버 스케줄링으로 정확한 시간 알림
+- 알림 커스터마이징 (사운드, 진동, 우선순위)
+
+## 4. Clean Architecture 설계
 
 ### 3.1 계층 구조
 
