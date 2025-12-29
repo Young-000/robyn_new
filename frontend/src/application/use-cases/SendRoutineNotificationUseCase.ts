@@ -48,25 +48,40 @@ export class SendRoutineNotificationUseCase {
   }
 
   private async collectInformation(source: any): Promise<string | null> {
-    switch (source.type) {
-      case 'weather': {
-        const weather = await this.informationService.getWeatherInfo(source.config);
-        return `🌤️ 날씨: ${weather.temperature}°C, ${weather.condition}`;
+    try {
+      switch (source.type) {
+        case 'weather': {
+          const weather = await this.informationService.getWeatherInfo(source.config);
+          return `🌤️ 날씨: ${weather.temperature}°C, ${weather.condition} (습도: ${weather.humidity}%)`;
+        }
+        case 'airQuality': {
+          const airQuality = await this.informationService.getAirQualityInfo(source.config);
+          const levelTextMap: Record<string, string> = {
+            good: '좋음',
+            moderate: '보통',
+            unhealthy: '나쁨',
+            veryUnhealthy: '매우 나쁨',
+            hazardous: '위험',
+          };
+          const levelText = levelTextMap[airQuality.level] || '알 수 없음';
+          return `💨 미세먼지: ${levelText} (PM10: ${airQuality.pm10}㎍/㎥, PM2.5: ${airQuality.pm25}㎍/㎥)`;
+        }
+        case 'bus': {
+          const bus = await this.informationService.getBusArrivalInfo(source.config);
+          const timeText = bus.arrivalTime === 0 ? '곧 도착' : `${bus.arrivalTime}분 후`;
+          return `🚌 버스: ${bus.routeName} ${timeText} (${bus.stationName})`;
+        }
+        case 'subway': {
+          const subway = await this.informationService.getSubwayArrivalInfo(source.config);
+          const timeText = subway.arrivalTime === 0 ? '곧 도착' : `${subway.arrivalTime}분 후`;
+          return `🚇 지하철: ${subway.routeName} ${timeText} (${subway.stationName})`;
+        }
+        default:
+          return null;
       }
-      case 'airQuality': {
-        const airQuality = await this.informationService.getAirQualityInfo(source.config);
-        return `💨 미세먼지: ${airQuality.level === 'good' ? '좋음' : '보통'} (PM10: ${airQuality.pm10})`;
-      }
-      case 'bus': {
-        const bus = await this.informationService.getBusArrivalInfo(source.config);
-        return `🚌 버스: ${bus.routeName} ${bus.arrivalTime}분 후 도착`;
-      }
-      case 'subway': {
-        const subway = await this.informationService.getSubwayArrivalInfo(source.config);
-        return `🚇 지하철: ${subway.routeName} ${subway.arrivalTime}분 후 도착`;
-      }
-      default:
-        return null;
+    } catch (error) {
+      console.error(`Failed to collect ${source.type} information:`, error);
+      return null;
     }
   }
 }

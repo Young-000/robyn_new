@@ -4,7 +4,7 @@ import { SendRoutineNotificationUseCase } from '@/application/use-cases/SendRout
 import { BrowserNotificationService } from '@/infrastructure/notification/BrowserNotificationService';
 import { LocalStorageRoutineRepository } from '@/infrastructure/storage/LocalStorageRoutineRepository';
 import { useNotification } from './useNotification';
-import { MockInformationService } from '@/infrastructure/api/MockInformationService';
+import { InformationServiceFactory } from '@/infrastructure/api/InformationServiceFactory';
 
 export function useRoutineScheduler() {
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -15,7 +15,7 @@ export function useRoutineScheduler() {
 
   // Notification Service와 Use Case 초기화
   const notificationService = new BrowserNotificationService();
-  const informationService = new MockInformationService();
+  const informationService = InformationServiceFactory.create();
   const sendNotificationUseCase = new SendRoutineNotificationUseCase(
     notificationService,
     informationService

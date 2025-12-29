@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Routine } from '@/domain/entities/Routine';
 import { Schedule } from '@/domain/value-objects/Schedule';
 import { InformationSource } from '@/domain/entities/InformationSource';
+import { InformationSourceConfig } from './InformationSourceConfig';
 import type { DayOfWeek, InformationSourceType } from '@/shared/types';
 
 interface RoutineFormProps {
@@ -59,7 +60,41 @@ export function RoutineForm({ onSubmit, onCancel }: RoutineFormProps) {
     type: InformationSourceType
   ) => {
     setInformationSources((prev) =>
-      prev.map((source, i) => (i === index ? { ...source, type } : source))
+      prev.map((source, i) => {
+        if (i === index) {
+          // 타입에 따라 기본 설정 제공
+          let defaultConfig: any = {};
+          
+          if (type === 'weather' || type === 'airQuality') {
+            // 현재 위치 또는 기본 위치 (서울시청)
+            defaultConfig = {
+              location: {
+                latitude: 37.5665,
+                longitude: 126.9780,
+                address: '서울특별시 중구 세종대로 110',
+              },
+            };
+          } else if (type === 'bus') {
+            defaultConfig = {
+              stationId: '',
+              routeId: '',
+              stationName: '강남역',
+              routeName: '146번',
+            };
+          } else if (type === 'subway') {
+            defaultConfig = {
+              stationId: '',
+              lineId: '2',
+              direction: 'up' as const,
+              stationName: '강남역',
+              lineName: '2호선',
+            };
+          }
+          
+          return { ...source, type, config: defaultConfig };
+        }
+        return source;
+      })
     );
   };
 
@@ -169,32 +204,43 @@ export function RoutineForm({ onSubmit, onCancel }: RoutineFormProps) {
           정보 소스
         </label>
         {informationSources.map((source, index) => (
-          <div key={index} className="flex gap-2 mb-2">
-            <select
-              value={source.type}
-              onChange={(e) =>
-                handleInformationTypeChange(
-                  index,
-                  e.target.value as InformationSourceType
-                )
-              }
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              {INFORMATION_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-            {informationSources.length > 1 && (
-              <button
-                type="button"
-                onClick={() => handleRemoveInformationSource(index)}
-                className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+          <div key={index} className="mb-4 p-3 border border-gray-200 dark:border-gray-700 rounded-md">
+            <div className="flex gap-2 mb-2">
+              <select
+                value={source.type}
+                onChange={(e) =>
+                  handleInformationTypeChange(
+                    index,
+                    e.target.value as InformationSourceType
+                  )
+                }
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               >
-                삭제
-              </button>
-            )}
+                {INFORMATION_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+              {informationSources.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveInformationSource(index)}
+                  className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+            <InformationSourceConfig
+              type={source.type}
+              config={source.config}
+              onChange={(newConfig) => {
+                const updated = [...informationSources];
+                updated[index] = { ...updated[index], config: newConfig };
+                setInformationSources(updated);
+              }}
+            />
           </div>
         ))}
         <button
